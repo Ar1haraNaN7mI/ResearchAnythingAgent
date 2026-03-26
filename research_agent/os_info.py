@@ -4,6 +4,8 @@ import platform
 import sys
 from typing import Tuple
 
+from research_agent.llm_settings import llm_config_summary
+
 
 def _read_linux_os_release() -> Tuple[str, str]:
     """Return (ID, PRETTY_NAME) from /etc/os-release if present."""
@@ -61,6 +63,7 @@ def format_startup_paragraph() -> str:
 
     fam = current_os_family()
     lines.append(f"  · Agent OS family for shell routing: {fam}")
+    lines.append(f"  · LLM backend: {llm_config_summary()}")
     lines.append(
         "  · OS-style commands are executed locally (no LLM). "
         "Use prefix `shell ` for raw shell, or `os linux|ubuntu|win <cmd>` for cross-OS mapping."

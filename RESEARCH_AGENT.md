@@ -46,15 +46,24 @@ python -m research_agent -t
 
 ---
 
-## Claude API（可选）
+## LLM 后端（可选：Claude / Ollama / Qwen）
 
-1. 将 `.env.example` 复制为根目录下的 `.env`。
-2. 在 `.env` 中填写 `ANTHROPIC_API_KEY`（见 [Anthropic Console](https://console.anthropic.com/)）。
-3. 可选：`CLAUDE_MODEL`、`ANTHROPIC_BASE_URL`、`CLAUDE_MAX_TOKENS`。
+在根目录 `.env` 中配置（可参考 `.env.example`）：
 
-在聊天板或终端里使用：`claude <你的提示词>`。
+| 变量 | 说明 |
+|------|------|
+| `LLM_PROVIDER` | `claude` \| `ollama` \| `qwen`。留空时按「已填的密钥/模型」自动选一个。 |
+| **Claude** | `ANTHROPIC_API_KEY`、`CLAUDE_MODEL`、`ANTHROPIC_BASE_URL`（可选） |
+| **Ollama** | `OLLAMA_BASE_URL`（默认 `http://127.0.0.1:11434`）、`OLLAMA_MODEL` |
+| **Qwen（阿里云 DashScope 兼容 OpenAI）** | `QWEN_API_KEY` 或 `DASHSCOPE_API_KEY`、`QWEN_MODEL`、`QWEN_BASE_URL`（可选） |
 
-代码内调用：`research_agent.claude_client.claude_complete()`、`claude_code_assist()`。
+统一输出长度：`LLM_MAX_TOKENS`（或沿用 `CLAUDE_MAX_TOKENS`）。
+
+Qwen 调用方式见：[通过 API 使用通义千问](https://help.aliyun.com/zh/model-studio/developer-reference/use-qwen-by-calling-api)。
+
+在聊天板或终端里使用：`llm <提示词>` 或 `claude <提示词>`（等价）。
+
+代码内调用：`research_agent.llm_client.llm_complete()`、`llm_code_assist()`；兼容别名 `claude_complete`（`claude_client`）。
 
 ---
 

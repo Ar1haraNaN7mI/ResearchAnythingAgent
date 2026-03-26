@@ -34,17 +34,20 @@ def parse_and_dispatch(text: str, runner: ProcessRunner) -> Tuple[str, int]:
         return os_hit
 
     parts = raw.split(None, 1)
-    if parts and parts[0].lower() == "claude":
+    if parts and parts[0].lower() in ("claude", "llm"):
         prompt = parts[1].strip() if len(parts) > 1 else ""
         if not prompt:
-            return ("Usage: claude <prompt>  (uses ANTHROPIC_API_KEY / CLAUDE_API_KEY)", 1)
+            return (
+                "Usage: llm <prompt>  (or claude <prompt>) — set LLM_PROVIDER=claude|ollama|qwen and keys in .env",
+                1,
+            )
         try:
-            from research_agent.claude_client import claude_code_assist
+            from research_agent.llm_client import llm_code_assist
 
-            reply = claude_code_assist(prompt)
+            reply = llm_code_assist(prompt)
             return (reply or "(empty reply)", 0)
         except Exception as exc:
-            return (f"Claude API error: {exc}", 1)
+            return (f"LLM error: {exc}", 1)
 
     if low.startswith("cil ") or low.startswith("cil\t"):
         if sys.platform != "win32":
@@ -105,7 +108,8 @@ def _help_text() -> str:
   shell <cmd>            — run raw shell on THIS machine (no LLM)
   os linux|ubuntu|win <cmd> — translate from named OS family, then run (no LLM)
   apt / winget / sudo …  — detected OS commands run locally (no LLM); cross-OS is translated when possible
-  claude <prompt>        — call Anthropic Claude (preconfigured API; set ANTHROPIC_API_KEY)
+  llm <prompt>           — chat model (LLM_PROVIDER: claude | ollama | qwen — see .env)
+  claude <prompt>        — same as llm (alias)
   train / experiment     — run autoresearch train.py (uv run, fallback python)
   prepare / data prep    — run autoresearch prepare.py
   cil ...                — Windows only: pass-through to cil_anything.py

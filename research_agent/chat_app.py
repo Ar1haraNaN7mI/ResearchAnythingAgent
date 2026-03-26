@@ -9,6 +9,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 
 from research_agent import runtime
+from research_agent.llm_settings import llm_config_summary
 from research_agent.os_info import format_startup_paragraph
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -55,7 +56,7 @@ async def index() -> FileResponse:
 @app.get("/api/system")
 async def system_info() -> dict:
     """JSON for optional frontend banner; same text as startup paragraph."""
-    return {"text": format_startup_paragraph()}
+    return {"text": format_startup_paragraph(), "llm": llm_config_summary()}
 
 
 @app.websocket("/ws")
