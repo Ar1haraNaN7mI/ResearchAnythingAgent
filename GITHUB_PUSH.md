@@ -5,10 +5,6 @@ Local repo status: run `git status` — it should show **clean** (all project fi
 If `git push` fails with **Connection was reset** or **Failed to connect**:
 
 1. **Try HTTP/1.1** (often helps unstable networks):
-   ```bat
-   push_github_fix.bat
-   ```
-   Or manually:
    ```bash
    git config http.version HTTP/1.1
    git config http.postBuffer 524288000
