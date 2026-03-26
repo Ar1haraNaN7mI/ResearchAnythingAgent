@@ -9,6 +9,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 
 from research_agent import runtime
+from research_agent.os_info import format_startup_paragraph
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -51,11 +52,19 @@ async def index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/api/system")
+async def system_info() -> dict:
+    """JSON for optional frontend banner; same text as startup paragraph."""
+    return {"text": format_startup_paragraph()}
+
+
 @app.websocket("/ws")
 async def websocket_chat(websocket: WebSocket) -> None:
     await websocket.accept()
     _clients.append(websocket)
-    await websocket.send_text("[agent] connected. Type `help` for commands.")
+    await websocket.send_text(
+        format_startup_paragraph() + "\n\n[agent] connected. Type `help` for commands."
+    )
     try:
         while True:
             raw = await websocket.receive_text()

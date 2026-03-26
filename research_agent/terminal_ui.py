@@ -4,6 +4,7 @@ import sys
 import threading
 import time
 from research_agent import runtime
+from research_agent.os_info import format_startup_paragraph
 
 _print_lock = threading.Lock()
 
@@ -90,6 +91,9 @@ def _terminal_broadcast(msg: str) -> None:
 def run_terminal_session(prompt: str = "RA> ") -> None:
     """TTY command loop: same agent queue as the web UI."""
     run_boot_animation()
+    with _print_lock:
+        print(format_startup_paragraph(), flush=True)
+        print(flush=True)
     runtime.start_worker(_terminal_broadcast)
     with _print_lock:
         print(

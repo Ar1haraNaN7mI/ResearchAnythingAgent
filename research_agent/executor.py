@@ -46,6 +46,42 @@ class ProcessRunner:
         cmd = [sys.executable, str(script), *args]
         return self._run_list(cmd, cwd=cwd or script.parent)
 
+    def run_shell(self, command: str) -> int:
+        """Run a shell string on the current OS (cmd.exe / PowerShell on Windows, /bin/sh on Unix)."""
+        self._log(f"[shell] {command}")
+        with self._lock:
+            if sys.platform == "win32":
+                self._proc = subprocess.Popen(
+                    command,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                )
+            else:
+                self._proc = subprocess.Popen(
+                    ["/bin/sh", "-c", command],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                )
+            proc = self._proc
+        assert proc is not None
+        assert proc.stdout is not None
+        try:
+            for line in proc.stdout:
+                self._log(line.rstrip())
+            rc = proc.wait()
+            return int(rc)
+        finally:
+            with self._lock:
+                if self._proc is proc:
+                    self._proc = None
+
     def _run_list(self, cmd: list[str], cwd: Path) -> int:
         self._log(f"[exec] {' '.join(cmd)}")
         with self._lock:

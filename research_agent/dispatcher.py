@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import re
 import shlex
+import sys
 from typing import Tuple
 
 from research_agent.executor import ProcessRunner
+from research_agent.os_shell import try_handle_os_command
 
 
 def parse_and_dispatch(text: str, runner: ProcessRunner) -> Tuple[str, int]:
@@ -27,6 +29,10 @@ def parse_and_dispatch(text: str, runner: ProcessRunner) -> Tuple[str, int]:
             0,
         )
 
+    os_hit = try_handle_os_command(raw, runner)
+    if os_hit is not None:
+        return os_hit
+
     parts = raw.split(None, 1)
     if parts and parts[0].lower() == "claude":
         prompt = parts[1].strip() if len(parts) > 1 else ""
@@ -41,6 +47,8 @@ def parse_and_dispatch(text: str, runner: ProcessRunner) -> Tuple[str, int]:
             return (f"Claude API error: {exc}", 1)
 
     if low.startswith("cil ") or low.startswith("cil\t"):
+        if sys.platform != "win32":
+            return ("CIL (desktop UI automation) is only supported on Windows.", 1)
         rest = raw[4:].strip()
         try:
             args = shlex.split(rest, posix=False)
@@ -79,8 +87,10 @@ def parse_and_dispatch(text: str, runner: ProcessRunner) -> Tuple[str, int]:
         rc = runner.run_uv_fallback_python("train.py")
         return (f"train.py finished with exit code {rc}", 0 if rc == 0 else 1)
 
-    # Default: treat whole line as extra args to CIL if it looks like flags
+    # Default: treat whole line as extra args to CIL if it looks like flags (Windows only)
     if raw.startswith("--"):
+        if sys.platform != "win32":
+            return ("CIL is only supported on Windows.", 1)
         rc = runner.run_cil(*shlex.split(raw, posix=False))
         return (f"CIL finished with exit code {rc}", 0 if rc == 0 else 1)
 
@@ -92,10 +102,13 @@ def parse_and_dispatch(text: str, runner: ProcessRunner) -> Tuple[str, int]:
 
 def _help_text() -> str:
     return """Commands (newest chat message is always handled before background research):
+  shell <cmd>            — run raw shell on THIS machine (no LLM)
+  os linux|ubuntu|win <cmd> — translate from named OS family, then run (no LLM)
+  apt / winget / sudo …  — detected OS commands run locally (no LLM); cross-OS is translated when possible
   claude <prompt>        — call Anthropic Claude (preconfigured API; set ANTHROPIC_API_KEY)
   train / experiment     — run autoresearch train.py (uv run, fallback python)
   prepare / data prep    — run autoresearch prepare.py
-  cil ...                — pass-through to cil_anything.py (quote paths)
+  cil ...                — Windows only: pass-through to cil_anything.py
   uv ...                 — uv run in autoresearch (e.g. uv run train.py)
   stop / cancel          — stop current subprocess
   auto on / auto off     — (handled by worker) toggle continuous research

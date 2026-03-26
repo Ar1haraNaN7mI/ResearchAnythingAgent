@@ -387,6 +387,68 @@
     #send:active {
       transform: translateY(0);
     }
+
+    .os-panel {
+      margin-top: 0.75rem;
+      font-size: 0.72rem;
+    }
+
+    .os-panel summary {
+      cursor: pointer;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      list-style: none;
+    }
+
+    .os-panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .os-runtime {
+      margin-top: 0.35rem;
+      font-size: 0.68rem;
+      color: var(--muted);
+      line-height: 1.35;
+      max-width: 52rem;
+    }
+
+    .os-ref-table-wrap {
+      margin-top: 0.5rem;
+      overflow-x: auto;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      background: rgba(5, 8, 16, 0.5);
+    }
+
+    .os-ref-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.68rem;
+    }
+
+    .os-ref-table th,
+    .os-ref-table td {
+      padding: 0.4rem 0.55rem;
+      border-bottom: 1px solid rgba(48, 54, 61, 0.8);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .os-ref-table th {
+      color: var(--accent3);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .os-ref-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .os-ref-table code {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: #c9d1d9;
+    }
   </style>
 </head>
 <body>
@@ -409,7 +471,53 @@
         <div>
           <span class="logo-mini">RESEARCH ANYTHING</span>
           <h1>Command · Autoresearch + CIL</h1>
-          <p class="hint">New messages preempt background work. Try: train, prepare, cil …, claude …, auto on/off, stop, help</p>
+          <p class="hint">New messages preempt background work. Try: train, prepare, cil …, claude …, shell/os …, auto on/off, stop, help</p>
+          <div class="os-runtime" id="os-runtime" aria-live="polite"></div>
+          <details class="os-panel">
+            <summary>Linux / Ubuntu · Windows command map (reference)</summary>
+            <div class="os-ref-table-wrap">
+              <table class="os-ref-table">
+                <thead>
+                  <tr>
+                    <th>Task</th>
+                    <th>Windows</th>
+                    <th>Ubuntu / Debian</th>
+                    <th>Linux (generic)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>List files</td>
+                    <td><code>dir</code> / <code>Get-ChildItem</code></td>
+                    <td><code>ls -la</code></td>
+                    <td><code>ls -la</code></td>
+                  </tr>
+                  <tr>
+                    <td>Install package</td>
+                    <td><code>winget install &lt;pkg&gt;</code></td>
+                    <td><code>sudo apt install &lt;pkg&gt;</code></td>
+                    <td><code>dnf install</code> / <code>pacman -S</code> …</td>
+                  </tr>
+                  <tr>
+                    <td>Update index</td>
+                    <td><code>winget source update</code></td>
+                    <td><code>sudo apt update</code></td>
+                    <td><code>dnf check-update</code> …</td>
+                  </tr>
+                  <tr>
+                    <td>Env / path</td>
+                    <td><code>echo %PATH%</code></td>
+                    <td><code>echo $PATH</code></td>
+                    <td><code>echo $PATH</code></td>
+                  </tr>
+                  <tr>
+                    <td>Raw shell (this agent)</td>
+                    <td colspan="3"><code>shell &lt;command&gt;</code> · <code>os linux|ubuntu|win &lt;command&gt;</code> (auto-translate when possible)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
         </div>
         <span class="status-pill" id="conn-pill">Connecting</span>
       </div>
@@ -442,6 +550,18 @@
     const pill = document.getElementById("conn-pill");
     const proto = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(proto + "://" + location.host + "/ws");
+
+    fetch("/api/system")
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        var el = document.getElementById("os-runtime");
+        if (el && d.text) {
+          el.textContent = d.text.split("\n").slice(0, 4).join(" · ");
+        }
+      })
+      .catch(function () {});
 
     function line(t) {
       log.textContent += t + "\n";
