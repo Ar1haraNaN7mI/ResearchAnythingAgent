@@ -3,51 +3,484 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Research Agent</title>
+  <title>RESEARCH ANYTHING</title>
   <style>
+    :root {
+      --bg-deep: #050508;
+      --bg-panel: rgba(12, 14, 22, 0.72);
+      --accent: #00f0ff;
+      --accent2: #bf5fff;
+      --accent3: #00ff9d;
+      --text: #e8f0ff;
+      --muted: rgba(200, 220, 255, 0.55);
+      --border: rgba(0, 240, 255, 0.25);
+      --font-display: "Segoe UI", system-ui, sans-serif;
+      --font-mono: "Cascadia Code", "Consolas", ui-monospace, monospace;
+      --boot-duration: 2.8s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
     * { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; margin: 0; background: #0f1419; color: #e6edf3; height: 100vh; display: flex; flex-direction: column; }
-    header { padding: 12px 16px; background: #161b22; border-bottom: 1px solid #30363d; }
-    h1 { margin: 0; font-size: 1.1rem; font-weight: 600; }
-    #log { flex: 1; overflow-y: auto; padding: 12px 16px; font-family: ui-monospace, monospace; font-size: 13px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
-    .row { display: flex; gap: 8px; padding: 12px 16px; background: #161b22; border-top: 1px solid #30363d; }
-    #msg { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: #e6edf3; font-size: 14px; }
-    #send { padding: 10px 18px; border-radius: 8px; border: none; background: #238636; color: #fff; font-weight: 600; cursor: pointer; }
-    #send:hover { background: #2ea043; }
-    .hint { font-size: 12px; color: #8b949e; margin-top: 4px; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: var(--font-display);
+      background: var(--bg-deep);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* Animated mesh background */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 120% 80% at 20% 20%, rgba(0, 240, 255, 0.12), transparent 50%),
+        radial-gradient(ellipse 100% 60% at 80% 70%, rgba(191, 95, 255, 0.1), transparent 45%),
+        radial-gradient(ellipse 80% 50% at 50% 100%, rgba(0, 255, 157, 0.06), transparent 40%),
+        linear-gradient(180deg, #050508 0%, #0a0c14 50%, #050508 100%);
+      animation: meshPulse 14s ease-in-out infinite alternate;
+    }
+
+    @keyframes meshPulse {
+      0% { filter: hue-rotate(0deg) saturate(1); opacity: 1; }
+      100% { filter: hue-rotate(25deg) saturate(1.15); opacity: 0.95; }
+    }
+
+    /* Grid scanlines overlay */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      animation: gridDrift 20s linear infinite;
+      -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 20%, transparent 75%);
+      mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 20%, transparent 75%);
+    }
+
+    @keyframes gridDrift {
+      from { transform: translate(0, 0); }
+      to { transform: translate(-48px, -48px); }
+    }
+
+    /* --- Boot / splash --- */
+    #boot {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at center, #0c1220 0%, #050508 65%);
+      transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1), transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #boot.boot-hide {
+      opacity: 0;
+      transform: scale(1.08);
+      pointer-events: none;
+    }
+
+    .brand-wrap {
+      text-align: center;
+      perspective: 800px;
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: clamp(1.25rem, 5vw, 2.75rem);
+      font-weight: 800;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      line-height: 1.35;
+      background: linear-gradient(
+        105deg,
+        #fff 0%,
+        var(--accent) 25%,
+        var(--accent2) 50%,
+        var(--accent3) 75%,
+        #fff 100%
+      );
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: titleShine 3s linear infinite, titleFloat 4s ease-in-out infinite;
+      text-shadow: 0 0 40px rgba(0, 240, 255, 0.35);
+    }
+
+    @keyframes titleShine {
+      0% { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+
+    @keyframes titleFloat {
+      0%, 100% { transform: translateY(0) rotateX(0deg); }
+      50% { transform: translateY(-6px) rotateX(4deg); }
+    }
+
+    .brand-sub {
+      margin-top: 0.75rem;
+      font-size: clamp(0.65rem, 2vw, 0.85rem);
+      letter-spacing: 0.55em;
+      color: var(--muted);
+      animation: blink 0.12s ease-in-out infinite alternate;
+    }
+
+    @keyframes blink {
+      from { opacity: 0.85; }
+      to { opacity: 1; }
+    }
+
+    .boot-ring {
+      margin-top: 2.5rem;
+      width: min(72vw, 320px);
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+
+    .boot-ring-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+      box-shadow: 0 0 20px var(--accent);
+      animation: bootLoad var(--boot-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes bootLoad {
+      0% { width: 0%; }
+      100% { width: 100%; }
+    }
+
+    .boot-orbit {
+      position: absolute;
+      width: min(90vw, 420px);
+      height: min(90vw, 420px);
+      border: 1px solid rgba(0, 240, 255, 0.15);
+      border-radius: 50%;
+      animation: orbitSpin 12s linear infinite;
+    }
+
+    .boot-orbit::before {
+      content: "";
+      position: absolute;
+      top: -4px;
+      left: 50%;
+      width: 8px;
+      height: 8px;
+      margin-left: -4px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent);
+    }
+
+    @keyframes orbitSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .boot-flare {
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      background: conic-gradient(from 0deg, transparent, rgba(0, 240, 255, 0.08), transparent 40%);
+      animation: flareSpin 8s linear infinite;
+    }
+
+    @keyframes flareSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(-360deg); }
+    }
+
+    /* --- Main app --- */
+    #app {
+      position: relative;
+      z-index: 2;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.7s ease 0.15s, transform 0.7s ease 0.15s;
+    }
+
+    #app.app-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    header {
+      padding: 0.875rem 1.25rem;
+      background: var(--bg-panel);
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .logo-mini {
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.25em;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: pulseGlow 3s ease-in-out infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.25); }
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .hint {
+      margin: 0.4rem 0 0;
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.4;
+      max-width: 52rem;
+    }
+
+    .status-pill {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 1px solid rgba(0, 255, 157, 0.35);
+      color: var(--accent3);
+      background: rgba(0, 255, 157, 0.06);
+    }
+
+    .status-pill::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent3);
+      box-shadow: 0 0 8px var(--accent3);
+      animation: pulseDot 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    #log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0, 240, 255, 0.35) transparent;
+    }
+
+    #log::-webkit-scrollbar { width: 6px; }
+    #log::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      border-radius: 999px;
+    }
+
+    .row {
+      display: flex;
+      gap: 0.65rem;
+      padding: 1rem 1.25rem;
+      background: var(--bg-panel);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+    }
+
+    #msg {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      background: rgba(5, 8, 16, 0.85);
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    #msg:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.15);
+    }
+
+    #msg::placeholder {
+      color: rgba(200, 220, 255, 0.35);
+    }
+
+    #send {
+      padding: 0.75rem 1.35rem;
+      border-radius: 12px;
+      border: none;
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      color: #050508;
+      background: linear-gradient(135deg, var(--accent3), var(--accent));
+      background-size: 200% 200%;
+      animation: btnGradient 4s ease infinite;
+      box-shadow: 0 0 24px rgba(0, 240, 255, 0.35);
+      transition: transform 0.15s ease, box-shadow 0.2s;
+    }
+
+    @keyframes btnGradient {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    #send:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 32px rgba(0, 240, 255, 0.55);
+    }
+
+    #send:active {
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Research Agent — autoresearch + CIL Anything</h1>
-    <p class="hint">New messages always preempt background research. Commands: train, prepare, cil …, auto on/off, stop, help</p>
-  </header>
-  <div id="log"></div>
-  <div class="row">
-    <input id="msg" type="text" placeholder="Type a command…" autocomplete="off" />
-    <button id="send" type="button">Send</button>
+  <div id="boot" aria-hidden="true">
+    <div class="boot-flare" aria-hidden="true"></div>
+    <div class="boot-orbit" aria-hidden="true"></div>
+    <div class="brand-wrap">
+      <div class="logo-mini" style="margin-bottom:1rem">AGENT</div>
+      <h2 class="brand-title">RESEARCH<br />ANYTHING</h2>
+      <p class="brand-sub">AUTORESEARCH · CIL · CLAUDE</p>
+      <div class="boot-ring" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+        <div class="boot-ring-fill"></div>
+      </div>
+    </div>
   </div>
+
+  <div id="app">
+    <header>
+      <div class="header-bar">
+        <div>
+          <span class="logo-mini">RESEARCH ANYTHING</span>
+          <h1>Command · Autoresearch + CIL</h1>
+          <p class="hint">New messages preempt background work. Try: train, prepare, cil …, claude …, auto on/off, stop, help</p>
+        </div>
+        <span class="status-pill" id="conn-pill">Connecting</span>
+      </div>
+    </header>
+    <div id="log"></div>
+    <div class="row">
+      <input id="msg" type="text" placeholder="Type a command…" autocomplete="off" />
+      <button id="send" type="button">Send</button>
+    </div>
+  </div>
+
   <script>
+    (function () {
+      const boot = document.getElementById("boot");
+      const app = document.getElementById("app");
+      const root = document.documentElement;
+      const dur = parseFloat(getComputedStyle(root).getPropertyValue("--boot-duration")) || 2.8;
+      setTimeout(function () {
+        boot.classList.add("boot-hide");
+        app.classList.add("app-visible");
+        setTimeout(function () {
+          boot.style.display = "none";
+        }, 950);
+      }, dur * 1000);
+    })();
+
     const log = document.getElementById("log");
     const msg = document.getElementById("msg");
     const sendBtn = document.getElementById("send");
+    const pill = document.getElementById("conn-pill");
     const proto = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(proto + "://" + location.host + "/ws");
+
     function line(t) {
       log.textContent += t + "\n";
       log.scrollTop = log.scrollHeight;
     }
-    ws.onmessage = (ev) => line(ev.data);
-    ws.onclose = () => line("[agent] disconnected");
-    ws.onerror = () => line("[agent] connection error");
+
+    ws.onopen = function () {
+      pill.textContent = "Live";
+      pill.style.borderColor = "rgba(0,240,255,0.45)";
+      pill.style.color = "var(--accent)";
+    };
+
+    ws.onmessage = function (ev) {
+      line(ev.data);
+    };
+
+    ws.onclose = function () {
+      pill.textContent = "Offline";
+      pill.style.borderColor = "rgba(255,80,80,0.45)";
+      pill.style.color = "#ff6b6b";
+      line("[agent] disconnected");
+    };
+
+    ws.onerror = function () {
+      pill.textContent = "Error";
+      line("[agent] connection error");
+    };
+
     function send() {
       const t = msg.value.trim();
       if (!t) return;
       msg.value = "";
       ws.send(t);
     }
+
     sendBtn.onclick = send;
-    msg.onkeydown = (e) => { if (e.key === "Enter") send(); };
+    msg.onkeydown = function (e) {
+      if (e.key === "Enter") send();
+    };
   </script>
 </body>
 </html>
