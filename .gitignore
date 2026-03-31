@@ -18,6 +18,8 @@ run.log
 drawio_exports/*
 !drawio_exports/README.md
 
-# User knowledge base (keep README only)
+# User knowledge base (README + github_sync uploads for optional git push)
 knowledge_base/*
 !knowledge_base/README.md
+!knowledge_base/github_sync/
+!knowledge_base/github_sync/**

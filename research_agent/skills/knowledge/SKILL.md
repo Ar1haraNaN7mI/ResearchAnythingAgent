@@ -10,6 +10,7 @@ Build a **local** knowledge base from **PDF**, **Markdown**, **plain text**, and
 ## Layout
 
 - `knowledge_base/files/` — copies of ingested originals (gitignored by default).
+- `knowledge_base/github_sync/` — web uploads land here first, then index; this folder is **git-tracked** for optional `kb sync` / `?sync`.
 - `knowledge_base/index/kb.sqlite` — FTS index (gitignored).
 - Override root with **`KNOWLEDGE_BASE_DIR`** in `.env` if needed.
 
@@ -17,15 +18,21 @@ Build a **local** knowledge base from **PDF**, **Markdown**, **plain text**, and
 
 | Command | Purpose |
 |--------|---------|
-| `kb guide` | This document |
+| `kb manual` | **Full handbook** (web upload, `?` shortcuts, REST, Git sync) |
+| `kb guide` | This short document |
 | `kb status` | Chunk count, paths, retrieve budget |
 | `kb list` | Numbered sources |
 | `kb add <path>` | Ingest one file |
 | `kb remove <n>` | Drop source `#n` from `kb list` |
 | `kb search <q>` | Debug retrieval (same pipeline as LLM) |
 | `kb clear` | Wipe the FTS index only |
+| `kb sync` | `git add` / `commit` / `push` for `github_sync/` (needs `KNOWLEDGE_GIT_SYNC_ALLOW=1`) |
+
+Chat shortcuts: **`?upload`**, **`?delete <n>`**, **`?sync`** (half- or full-width `?`).
 
 Shortcuts: `skill kb …` or `kb …` in the chat dispatcher.
+
+**Web upload:** `POST /api/knowledge/upload` with multipart field **`file`**, or use the chat UI **Upload** button / `?upload`.
 
 ## LLM retrieval
 

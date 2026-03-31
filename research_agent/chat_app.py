@@ -6,7 +6,7 @@ import threading
 from pathlib import Path
 from typing import List
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 
 from research_agent import runtime
@@ -78,6 +78,24 @@ async def index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.post("/api/knowledge/upload")
+async def knowledge_upload(file: UploadFile = File(...)) -> dict:
+    """Multipart field name: file. Saves under knowledge_base/github_sync/ and ingests into FTS."""
+    from research_agent.knowledge.upload_handler import save_upload_and_ingest
+
+    name = file.filename or "upload.bin"
+    data = await file.read()
+    try:
+        source_key, chunks = save_upload_and_ingest(name, data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return {"ok": True, "source_key": source_key, "chunks": chunks}
+
+
 @app.get("/api/system")
 async def system_info() -> dict:
     """JSON for optional frontend banner; same text as startup paragraph."""
@@ -100,6 +118,8 @@ async def websocket_chat(websocket: WebSocket) -> None:
         while True:
             raw = await websocket.receive_text()
             text = raw.strip()
+            if text.startswith("\uff1f"):
+                text = "?" + text[1:]
             if not text:
                 continue
             await websocket.send_text(f"[you] {text}")

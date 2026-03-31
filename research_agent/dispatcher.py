@@ -11,6 +11,54 @@ from research_agent.os_shell import try_handle_os_command
 _SCRAPLING_CLI_SUBCOMMANDS = frozenset({"mcp", "shell", "install", "extract"})
 
 
+def _normalize_leading_query_mark(s: str) -> str:
+    s = s.strip()
+    if s.startswith("\uff1f"):
+        return "?" + s[1:]
+    return s
+
+
+def _dispatch_query_command(raw: str) -> Tuple[str, int] | None:
+    """?upload | ?delete <n> | ?sync — see kb manual."""
+    raw = _normalize_leading_query_mark(raw)
+    if not raw.startswith("?"):
+        return None
+    inner = raw[1:].strip()
+    if not inner:
+        return None
+    parts = inner.split(None, 1)
+    verb = parts[0].lower()
+    arg = parts[1].strip() if len(parts) > 1 else ""
+
+    if verb == "upload":
+        msg = (
+            "知识库上传：\n"
+            "· 网页：点「上传到知识库」或依赖本命令在浏览器中自动打开文件选择。\n"
+            "· REST：POST /api/knowledge/upload ，multipart 字段名 file。\n"
+            "· CLI：kb add <路径>\n"
+            "文件写入 knowledge_base/github_sync/ 并入 FTS 索引；可用 ?sync / kb sync 推到 Git（需环境变量允许）。\n"
+            "[[KB_OPEN_UPLOAD]]"
+        )
+        return (msg, 0)
+
+    if verb == "delete":
+        if not arg:
+            return ("用法：?delete <编号>（编号见 kb list）", 1)
+        from research_agent.skills import dispatch_skill_line
+
+        return dispatch_skill_line(f"kb remove {arg}")
+
+    if verb == "sync":
+        from research_agent.knowledge.git_sync import run_knowledge_github_sync
+
+        return run_knowledge_github_sync()
+
+    return (
+        f"未知 ? 子命令 {verb!r}。可用：?upload、?delete <n>、?sync；完整说明见 kb manual。",
+        1,
+    )
+
+
 def _dispatch_scrapling_cli(raw: str, runner: ProcessRunner) -> Tuple[str, int] | None:
     """
     Route `scrapling mcp|shell|install|extract ...` to vendored Scrapling CLI.
@@ -57,6 +105,7 @@ def parse_and_dispatch(text: str, runner: ProcessRunner) -> Tuple[str, int]:
     Returns (human-readable summary, exit code 0=ok).
     """
     raw = text.strip()
+    raw = _normalize_leading_query_mark(raw)
     low = raw.lower()
 
     if not raw:
@@ -71,6 +120,10 @@ def parse_and_dispatch(text: str, runner: ProcessRunner) -> Tuple[str, int]:
             _help_text(),
             0,
         )
+
+    qhit = _dispatch_query_command(raw)
+    if qhit is not None:
+        return qhit
 
     if low == "skills":
         from research_agent.skills import format_skills_list
@@ -229,7 +282,10 @@ def _help_text() -> str:
   env setup <preset>     — LLM + web plans shell steps; autoresearch | research_agent | all
   env_setup <preset>     — same as env setup
   drawio …               — Next AI Draw.io skill: guide, url, path, bg transparent|white, status
-  kb …                   — local knowledge base: guide, add, list, remove, search, clear, status
+  kb …                   — knowledge base: kb manual, add, list, remove, search, clear, sync, status
+  ?upload                — KB upload help + open file picker (web UI); REST POST /api/knowledge/upload
+  ?delete <n>            — same as kb remove <n>
+  ?sync                  — git commit/push knowledge_base/github_sync/ (KNOWLEDGE_GIT_SYNC_ALLOW=1)
   flowchart / draw.io    — short URL + pointer to `drawio guide`
   skills                 — list built-in agent skills (e.g. bundled Scrapling)
   skill <name> …         — run skill; try `skill scrapling guide`

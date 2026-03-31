@@ -477,6 +477,37 @@
       font-size: 0.65rem;
       color: #c9d1d9;
     }
+
+    .kb-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .kb-toolbar .kb-upload {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      padding: 0.35rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 255, 157, 0.35);
+      background: rgba(0, 255, 157, 0.08);
+      color: var(--accent3);
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .kb-toolbar .kb-upload:hover {
+      border-color: rgba(0, 255, 157, 0.55);
+      box-shadow: 0 0 14px rgba(0, 255, 157, 0.2);
+    }
+
+    .kb-toolbar .kb-hint {
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
   </style>
 </head>
 <body>
@@ -499,7 +530,7 @@
         <div>
           <span class="logo-mini">RESEARCH ANYTHING</span>
           <h1>Command · Autoresearch + CIL</h1>
-          <p class="hint">New messages preempt background work. Try: train, prepare, cil …, llm / claude …, drawio …, shell/os …, auto on/off, stop, help</p>
+          <p class="hint">New messages preempt background work. Try: train, prepare, cil …, llm / claude …, drawio …, shell/os …, kb / ?upload · ?delete · ?sync, auto on/off, stop, help</p>
           <p class="drawio-bar" id="drawio-bar">
             <a id="drawio-link" href="http://127.0.0.1:6002" target="_blank" rel="noopener noreferrer">Flowcharts · Next AI Draw.io</a>
             <span class="drawio-meta" id="drawio-meta">opens in new tab · URL from NEXT_DRAWIO_URL</span>
@@ -555,6 +586,11 @@
       </div>
     </header>
     <div id="log"></div>
+    <div class="kb-toolbar">
+      <input type="file" id="kb-file" accept=".pdf,.md,.txt,.html,.htm,.markdown,application/pdf,text/markdown,text/plain,text/html" style="display:none" aria-hidden="true" />
+      <button type="button" class="kb-upload" id="kb-upload-btn" title="POST /api/knowledge/upload">上传到知识库</button>
+      <span class="kb-hint">或发送 ?upload · 手册 kb manual</span>
+    </div>
     <div class="row">
       <input id="msg" type="text" placeholder="Type a command…" autocomplete="off" />
       <button id="send" type="button">Send</button>
@@ -621,7 +657,15 @@
       };
 
       ws.onmessage = function (ev) {
-        line(ev.data);
+        var data = ev.data;
+        if (typeof data === "string" && data.indexOf("[[KB_OPEN_UPLOAD]]") !== -1) {
+          data = data.split("[[KB_OPEN_UPLOAD]]").join("").replace(/\n+$/, "");
+          var kf = document.getElementById("kb-file");
+          if (kf) {
+            kf.click();
+          }
+        }
+        line(data);
       };
 
       ws.onclose = function () {
@@ -641,6 +685,48 @@
     }
 
     connectWs();
+
+    (function setupKbUpload() {
+      var input = document.getElementById("kb-file");
+      var btn = document.getElementById("kb-upload-btn");
+      if (!input || !btn) {
+        return;
+      }
+      btn.onclick = function () {
+        input.click();
+      };
+      input.onchange = function () {
+        if (!input.files || !input.files[0]) {
+          return;
+        }
+        var fd = new FormData();
+        fd.append("file", input.files[0]);
+        fetch("/api/knowledge/upload", { method: "POST", body: fd })
+          .then(function (r) {
+            return r.json().then(function (j) {
+              return { ok: r.ok, status: r.status, j: j };
+            });
+          })
+          .then(function (x) {
+            if (x.ok && x.j && x.j.ok) {
+              line(
+                "[agent] KB upload OK: source_key=" +
+                  x.j.source_key +
+                  " chunks=" +
+                  x.j.chunks
+              );
+            } else {
+              var det = (x.j && (x.j.detail || x.j.message)) || JSON.stringify(x.j);
+              line("[agent] KB upload failed (" + x.status + "): " + det);
+            }
+            input.value = "";
+          })
+          .catch(function (e) {
+            line("[agent] KB upload error: " + e);
+            input.value = "";
+          });
+      };
+    })();
 
     function send() {
       const t = msg.value.trim();

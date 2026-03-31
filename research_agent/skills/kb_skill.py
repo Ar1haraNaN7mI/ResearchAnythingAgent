@@ -14,17 +14,21 @@ from research_agent.llm_settings import kb_retrieve_max_chars
 from research_agent.paths import knowledge_base_dir
 
 _SKILL_MD = Path(__file__).resolve().parent / "knowledge" / "SKILL.md"
+_MANUAL_MD = Path(__file__).resolve().parent / "knowledge" / "MANUAL.md"
 
 
 def _usage() -> str:
     return """kb — local knowledge base (Markdown, text, HTML, PDF)
-  kb guide              — full skill doc (OpenDataLoader PDF, env, retrieval)
+  kb manual             — detailed handbook (web ?commands, REST, Git sync)
+  kb guide              — concise skill doc (OpenDataLoader PDF, env, retrieval)
   kb status             — chunk count, index path, retrieve budget
   kb list               — numbered sources (use with kb remove <n>)
   kb add <file>         — ingest .pdf .md .txt .html (PDF needs Java 11+)
   kb remove <n>         — remove source #n from kb list
   kb search <query>     — debug FTS excerpts (same style as LLM injection)
   kb clear              — delete all indexed chunks (files on disk stay)
+  kb sync               — git add/commit/push knowledge_base/github_sync/ (needs env allow)
+Chat shortcuts: ?upload  ?delete <n>  ?sync
 Prefix: `skill kb …`"""
 
 
@@ -35,10 +39,20 @@ def handle_kb(args: list[str]) -> tuple[str, int]:
     sub = args[0].lower()
     rest = args[1:]
 
+    if sub == "manual":
+        if not _MANUAL_MD.is_file():
+            return (f"Missing {_MANUAL_MD}", 1)
+        return (_MANUAL_MD.read_text(encoding="utf-8", errors="replace"), 0)
+
     if sub == "guide":
         if not _SKILL_MD.is_file():
             return (f"Missing {_SKILL_MD}", 1)
         return (_SKILL_MD.read_text(encoding="utf-8", errors="replace"), 0)
+
+    if sub == "sync":
+        from research_agent.knowledge.git_sync import run_knowledge_github_sync
+
+        return run_knowledge_github_sync()
 
     if sub == "status":
         n = total_chunk_count()

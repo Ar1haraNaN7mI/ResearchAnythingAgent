@@ -21,7 +21,7 @@ def format_skills_list() -> str:
         "",
         "  scrapling — fetch/parse/guide/refs; MCP: `scrapling mcp --http ...`",
         "  drawio    — next-ai-draw-io: export path, PNG bg (transparent default), URL (see skill drawio guide)",
-        "  kb        — local knowledge base: PDF/md/txt/html, FTS; see `kb guide`",
+        "  kb        — knowledge base: ?upload / ?delete / ?sync, kb manual, PDF·md·txt·html",
         "",
         "Usage:",
         "  skills",
