@@ -95,6 +95,47 @@ def env_setup_step_attempts() -> int:
         return 5
 
 
+def env_setup_scrapling_enabled() -> bool:
+    """When true (default), env setup uses Scrapling to fetch doc pages from search hits."""
+    return os.environ.get("ENV_SETUP_SCRAPLING_DISABLE", "").strip().lower() not in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def env_setup_scrapling_urls_per_query() -> int:
+    raw = os.environ.get("ENV_SETUP_SCRAPLING_URLS_PER_QUERY", "2").strip()
+    try:
+        return max(0, min(5, int(raw)))
+    except ValueError:
+        return 2
+
+
+def env_setup_scrapling_max_urls() -> int:
+    raw = os.environ.get("ENV_SETUP_SCRAPLING_MAX_URLS", "8").strip()
+    try:
+        return max(0, min(20, int(raw)))
+    except ValueError:
+        return 8
+
+
+def env_setup_scrapling_max_total_chars() -> int:
+    raw = os.environ.get("ENV_SETUP_SCRAPLING_MAX_CHARS", "24000").strip()
+    try:
+        return max(2000, min(120000, int(raw)))
+    except ValueError:
+        return 24000
+
+
+def env_setup_scrapling_per_url_chars() -> int:
+    raw = os.environ.get("ENV_SETUP_SCRAPLING_PER_URL_CHARS", "8000").strip()
+    try:
+        return max(500, min(50000, int(raw)))
+    except ValueError:
+        return 8000
+
+
 def kb_retrieve_max_chars() -> int:
     """Max characters of KB excerpts prepended to each llm_complete user message."""
     raw = os.environ.get("KB_RETRIEVE_MAX_CHARS", "6000").strip()

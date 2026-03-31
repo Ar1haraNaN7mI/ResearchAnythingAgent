@@ -65,12 +65,21 @@ def _extract_json_array(text: str) -> list[Any]:
 
 
 def _plan_commands(preset: str, dirs: list[Path], manifest: str) -> list[dict[str, Any]]:
+    queries = _search_queries_for_manifest(manifest)
     search_blob = ""
-    for q in _search_queries_for_manifest(manifest):
+    for q in queries:
         try:
             search_blob += format_search_for_llm(q, max_results=4) + "\n"
         except Exception as exc:
             search_blob += f"(web search failed for {q!r}: {exc})\n"
+
+    scrapling_blob = ""
+    try:
+        from research_agent.env_scrapling_docs import scrapling_context_for_queries
+
+        scrapling_blob = scrapling_context_for_queries(queries)
+    except Exception as exc:
+        scrapling_blob = f"(Scrapling doc deep-read failed: {exc})\n"
 
     plat = "Windows" if sys.platform == "win32" else "Unix-like"
     user = f"""You are preparing a reproducible dev environment for this workspace.
@@ -83,11 +92,13 @@ Workspace manifest excerpts:
 
 Official / community hints (web search):
 {search_blob}
+{scrapling_blob}
 
 Respond with ONLY a JSON array (no markdown fences). Each element must be an object:
 {{"cmd": "<single shell command string>", "cwd": null | "autoresearch" | "research_agent"}}
 
 Rules:
+- Prefer install commands and flags that match the fetched official documentation above (web snippets + Scrapling pages).
 - Use `uv sync` or `uv pip install` inside autoresearch when pyproject.toml is present.
 - For research_agent use `pip install -r requirements.txt` from that folder (or `python -m pip`).
 - Do not use interactive prompts; add non-interactive flags where needed.
@@ -133,12 +144,20 @@ def _repair_command(
     manifest: str,
 ) -> str | None:
     tail = output[-4500:] if len(output) > 4500 else output
+    q = f"{failed_cmd} {tail[:400]}".replace("\n", " ")[:480]
     hint = ""
     try:
-        q = f"{failed_cmd} {tail[:400]}".replace("\n", " ")[:480]
         hint = format_search_for_llm(q, max_results=3)
     except Exception as exc:
         hint = f"(search unavailable: {exc})"
+
+    scrapling_repair = ""
+    try:
+        from research_agent.env_scrapling_docs import scrapling_context_for_queries
+
+        scrapling_repair = scrapling_context_for_queries([q], max_urls_override=3)
+    except Exception as exc:
+        scrapling_repair = f"(Scrapling doc deep-read failed: {exc})\n"
 
     plat = "Windows (cmd.exe / PowerShell)" if sys.platform == "win32" else "Unix shell"
     user = f"""A shell command failed while setting up the environment.
@@ -155,6 +174,7 @@ Manifest context (truncated):
 
 Error-oriented web hints:
 {hint}
+{scrapling_repair}
 
 Reply with exactly one line: the next shell command to fix or work around the failure.
 If the failure cannot be fixed automatically, reply with the single word SKIP (uppercase).
