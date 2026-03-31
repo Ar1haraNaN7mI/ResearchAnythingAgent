@@ -123,11 +123,21 @@ def _complete_qwen(user_message: str, *, system: Optional[str]) -> str:
 
 
 def llm_code_assist(instruction: str, *, context: str = "") -> str:
+    from research_agent.skills.prompt_triggers import build_conditional_skill_context
+
     system = (
         "You are the embedded coding agent for the Research Agent workspace. "
         "You help with autoresearch (train.py, prepare.py) and CIL Anything (Windows UI automation). "
         "Be concise, actionable, and prefer concrete shell commands or Python snippets when relevant."
     )
+    skill_addon = build_conditional_skill_context(instruction, context)
+    if skill_addon:
+        system = (
+            system
+            + "\n\n---\nThe following blocks are appended only when the user request implies "
+            "diagramming (draw.io) or web scraping / page fetching. Ignore them if irrelevant.\n\n"
+            + skill_addon
+        )
     user = instruction.strip()
     if context:
         user = f"Context:\n{context}\n\nRequest:\n{user}"

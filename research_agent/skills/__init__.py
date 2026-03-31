@@ -25,6 +25,9 @@ def format_skills_list() -> str:
         "  skills",
         "  skill <name> [subcommand ...]",
         "  scrapling …  |  drawio …   (same as skill <name> …)",
+        "",
+        "LLM (`llm` / `claude`): draw.io + Scrapling SKILL excerpts are injected only when your text",
+        "looks like diagramming or scraping / viewing pages — not on every message.",
     ]
     return "\n".join(lines)
 

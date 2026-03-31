@@ -214,7 +214,7 @@ def _help_text() -> str:
   os linux|ubuntu|win <cmd> — translate from named OS family, then run (no LLM)
   apt / winget / sudo …  — detected OS commands run locally (no LLM); cross-OS is translated when possible
   llm <prompt>           — chat model (LLM_PROVIDER: claude | ollama | qwen — see .env)
-  claude <prompt>        — same as llm (alias)
+  claude <prompt>        — same as llm (alias); draw.io / Scrapling skill docs are added only if the prompt suggests diagrams or scraping/pages
   train / experiment     — run autoresearch train.py (uv run, fallback python)
   prepare / data prep    — run autoresearch prepare.py
   cil ...                — Windows only: pass-through to cil_anything.py
