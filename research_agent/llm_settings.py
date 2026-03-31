@@ -95,6 +95,15 @@ def env_setup_step_attempts() -> int:
         return 5
 
 
+def kb_retrieve_max_chars() -> int:
+    """Max characters of KB excerpts prepended to each llm_complete user message."""
+    raw = os.environ.get("KB_RETRIEVE_MAX_CHARS", "6000").strip()
+    try:
+        return max(500, min(50000, int(raw)))
+    except ValueError:
+        return 6000
+
+
 def llm_config_summary() -> str:
     """One-line description for logs / UI."""
     p = llm_provider()

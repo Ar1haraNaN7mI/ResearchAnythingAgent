@@ -18,3 +18,5 @@ mcp>=1.26.0
 markdownify>=1.2.0
 click>=8.3.0
 pydantic>=2.0
+# User knowledge base: PDF → Markdown via JVM (requires Java 11+)
+opendataloader-pdf>=2.0.0

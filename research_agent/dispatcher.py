@@ -96,6 +96,11 @@ def parse_and_dispatch(text: str, runner: ProcessRunner) -> Tuple[str, int]:
 
         return dispatch_skill_line(raw.strip())
 
+    if low == "kb" or low.startswith("kb ") or low.startswith("kb\t"):
+        from research_agent.skills import dispatch_skill_line
+
+        return dispatch_skill_line(raw.strip())
+
     if low in ("flowchart", "draw.io"):
         from research_agent.llm_settings import next_drawio_url
 
@@ -224,6 +229,7 @@ def _help_text() -> str:
   env setup <preset>     — LLM + web plans shell steps; autoresearch | research_agent | all
   env_setup <preset>     — same as env setup
   drawio …               — Next AI Draw.io skill: guide, url, path, bg transparent|white, status
+  kb …                   — local knowledge base: guide, add, list, remove, search, clear, status
   flowchart / draw.io    — short URL + pointer to `drawio guide`
   skills                 — list built-in agent skills (e.g. bundled Scrapling)
   skill <name> …         — run skill; try `skill scrapling guide`

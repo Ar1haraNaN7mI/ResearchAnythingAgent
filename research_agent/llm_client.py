@@ -6,6 +6,7 @@ from research_agent.llm_settings import (
     anthropic_api_key,
     anthropic_base_url,
     claude_model,
+    kb_retrieve_max_chars,
     llm_provider,
     max_output_tokens,
     ollama_base_url,
@@ -16,12 +17,43 @@ from research_agent.llm_settings import (
 )
 
 
+def _kb_context_block(user_message: str) -> str:
+    import os
+
+    if os.environ.get("KB_RETRIEVE_DISABLE", "").strip().lower() in ("1", "true", "yes"):
+        return ""
+    if not (user_message or "").strip():
+        return ""
+    try:
+        from research_agent.knowledge.retrieve import retrieve_for_prompt
+
+        ctx = retrieve_for_prompt(
+            user_message, max_chars=kb_retrieve_max_chars()
+        ).strip()
+        if not ctx:
+            return ""
+        return (
+            "The following excerpts are retrieved from the user's local knowledge base. "
+            "Use them when relevant; otherwise ignore.\n\n"
+            "--- Knowledge base ---\n"
+            + ctx
+            + "\n--- End knowledge base ---"
+        )
+    except Exception:
+        return ""
+
+
 def llm_complete(
     user_message: str,
     *,
     system: Optional[str] = None,
+    skip_kb: bool = False,
 ) -> str:
     """Route to configured backend (Claude / Ollama / Qwen)."""
+    if not skip_kb:
+        kb_block = _kb_context_block(user_message)
+        if kb_block:
+            user_message = kb_block + "\n\n" + user_message
     provider = llm_provider()
     if provider == "claude":
         return _complete_claude(user_message, system=system)

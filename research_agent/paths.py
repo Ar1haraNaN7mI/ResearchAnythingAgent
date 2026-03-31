@@ -19,10 +19,19 @@ def drawio_export_dir() -> Path:
     return (ROOT / "drawio_exports").resolve()
 
 
+def knowledge_base_dir() -> Path:
+    """User knowledge base: originals under files/, SQLite FTS under index/."""
+    raw = os.environ.get("KNOWLEDGE_BASE_DIR", "").strip()
+    if raw:
+        return Path(raw).expanduser().resolve()
+    return (ROOT / "knowledge_base").resolve()
+
+
 __all__ = [
     "ROOT",
     "AUTORESEARCH_DIR",
     "CIL_SCRIPT",
     "SCRAPLING_DIR",
     "drawio_export_dir",
+    "knowledge_base_dir",
 ]

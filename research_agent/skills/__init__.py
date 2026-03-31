@@ -4,13 +4,14 @@ import shlex
 import sys
 from typing import Callable
 
-from research_agent.skills import drawio_skill, scrapling_skill
+from research_agent.skills import drawio_skill, kb_skill, scrapling_skill
 
 SkillHandler = Callable[[list[str]], tuple[str, int]]
 
 _HANDLERS: dict[str, SkillHandler] = {
     "scrapling": scrapling_skill.handle_scrapling,
     "drawio": drawio_skill.handle_drawio,
+    "kb": kb_skill.handle_kb,
 }
 
 
@@ -20,14 +21,17 @@ def format_skills_list() -> str:
         "",
         "  scrapling — fetch/parse/guide/refs; MCP: `scrapling mcp --http ...`",
         "  drawio    — next-ai-draw-io: export path, PNG bg (transparent default), URL (see skill drawio guide)",
+        "  kb        — local knowledge base: PDF/md/txt/html, FTS; see `kb guide`",
         "",
         "Usage:",
         "  skills",
         "  skill <name> [subcommand ...]",
-        "  scrapling …  |  drawio …   (same as skill <name> …)",
+        "  scrapling …  |  drawio …  |  kb …   (same as skill <name> …)",
         "",
         "LLM (`llm` / `claude`): draw.io + Scrapling SKILL excerpts are injected only when your text",
         "looks like diagramming or scraping / viewing pages — not on every message.",
+        "Indexed knowledge base excerpts are prepended on every LLM call when the index is non-empty",
+        "(unless KB_RETRIEVE_DISABLE=1).",
     ]
     return "\n".join(lines)
 

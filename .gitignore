@@ -17,3 +17,7 @@ run.log
 # Next AI Draw.io exports (keep README only)
 drawio_exports/*
 !drawio_exports/README.md
+
+# User knowledge base (keep README only)
+knowledge_base/*
+!knowledge_base/README.md
