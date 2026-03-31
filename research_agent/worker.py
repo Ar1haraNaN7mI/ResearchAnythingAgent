@@ -62,8 +62,11 @@ class ResearchWorker(threading.Thread):
             self._broadcast("[agent] auto research OFF")
             return
 
-        msg, _ok = parse_and_dispatch(cmd.text, self._runner)
-        self._broadcast(f"[result] {msg}")
+        try:
+            msg, exit_code = parse_and_dispatch(cmd.text, self._runner)
+            self._broadcast(f"[result] exit={exit_code} {msg}")
+        except Exception as exc:
+            self._broadcast(f"[error] command crashed: {exc}")
 
         if cmd.kind == CommandKind.AUTO_RESEARCH and self._auto_research:
             time.sleep(0.3)

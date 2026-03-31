@@ -8,6 +8,49 @@ from typing import Tuple
 from research_agent.executor import ProcessRunner
 from research_agent.os_shell import try_handle_os_command
 
+_SCRAPLING_CLI_SUBCOMMANDS = frozenset({"mcp", "shell", "install", "extract"})
+
+
+def _dispatch_scrapling_cli(raw: str, runner: ProcessRunner) -> Tuple[str, int] | None:
+    """
+    Route `scrapling mcp|shell|install|extract ...` to vendored Scrapling CLI.
+    Other `scrapling ...` lines fall through to agent skills (fetch/parse/guide).
+    """
+    try:
+        parts = shlex.split(raw.strip(), posix=(sys.platform != "win32"))
+    except ValueError as exc:
+        return (f"scrapling parse error: {exc}", 1)
+
+    if not parts or parts[0].lower() != "scrapling" or len(parts) < 2:
+        return None
+
+    sub = parts[1].lower()
+    if sub not in _SCRAPLING_CLI_SUBCOMMANDS:
+        return None
+
+    if sub == "mcp":
+        if "--http" not in parts:
+            return (
+                "Scrapling MCP 默认走 stdio，适合作为 Cursor / IDE 的子进程；在聊天 Worker 里会阻塞等待标准输入。\n"
+                "请使用官方实现的 streamable-http（与上游 FastMCP 一致），例如：\n"
+                "  scrapling mcp --http --host 127.0.0.1 --port 8766\n"
+                "然后用支持 HTTP 的 MCP 客户端指向该地址。停止：发送 stop / cancel。\n"
+                "Windows 桌面 UI 自动化请用本仓库命令：cil ...（与 Scrapling 无关）。",
+                1,
+            )
+
+    if sub == "shell":
+        if not any(x in ("-c", "--code") for x in parts):
+            return (
+                "scrapling shell 是交互式 REPL，请在系统终端运行，例如：\n"
+                f"  {sys.executable} research_agent\\\\scrapling_entry.py shell\n"
+                "在聊天里仅支持一次性求值：scrapling shell -c \"1+1\"",
+                1,
+            )
+
+    rc = runner.run_scrapling_cli(*parts[1:])
+    return (f"scrapling CLI exited with code {rc}", 0 if rc == 0 else 1)
+
 
 def parse_and_dispatch(text: str, runner: ProcessRunner) -> Tuple[str, int]:
     """
@@ -28,6 +71,63 @@ def parse_and_dispatch(text: str, runner: ProcessRunner) -> Tuple[str, int]:
             _help_text(),
             0,
         )
+
+    if low == "skills":
+        from research_agent.skills import format_skills_list
+
+        return (format_skills_list(), 0)
+
+    if low.startswith("skill "):
+        from research_agent.skills import dispatch_skill_line
+
+        return dispatch_skill_line(raw[6:].strip())
+
+    if low.startswith("scrapling"):
+        cli_hit = _dispatch_scrapling_cli(raw, runner)
+        if cli_hit is not None:
+            return cli_hit
+        from research_agent.skills import dispatch_skill_line
+
+        tail = raw[9:].strip() if len(raw) > 9 else ""
+        return dispatch_skill_line(("scrapling " + tail).strip())
+
+    if low in ("drawio", "flowchart", "draw.io"):
+        from research_agent.llm_settings import next_drawio_url
+
+        u = next_drawio_url()
+        return (
+            "Next AI Draw.io (AI + draw.io, zh UI under app/[lang]): "
+            f"{u}\n"
+            "Start: cd next-ai-draw-io → npm install → copy env.example to .env.local → "
+            "set AI_PROVIDER=qwen, QWEN_API_KEY (same as root .env), AI_MODEL → npm run dev.",
+            0,
+        )
+
+    if low.startswith("web search "):
+        from research_agent.env_agent import run_websearch_display
+
+        q = raw[11:].strip()
+        return run_websearch_display(q)
+
+    if low.startswith("websearch"):
+        rest = raw[9:].strip() if len(raw) > 9 else ""
+        if not rest.strip():
+            return ("Usage: websearch <query>  (or: web search <query>)", 1)
+        from research_agent.env_agent import run_websearch_display
+
+        return run_websearch_display(rest)
+
+    m_env = re.match(r"env\s+setup\s+(\S+)", raw, re.I)
+    if m_env:
+        from research_agent.env_agent import run_env_setup
+
+        return run_env_setup(runner, m_env.group(1))
+
+    m_env2 = re.match(r"env_setup\s+(\S+)", raw, re.I)
+    if m_env2:
+        from research_agent.env_agent import run_env_setup
+
+        return run_env_setup(runner, m_env2.group(1))
 
     os_hit = try_handle_os_command(raw, runner)
     if os_hit is not None:
@@ -114,6 +214,18 @@ def _help_text() -> str:
   prepare / data prep    — run autoresearch prepare.py
   cil ...                — Windows only: pass-through to cil_anything.py
   uv ...                 — uv run in autoresearch (e.g. uv run train.py)
+  websearch <q>          — Web search via ddgs (docs / install hints; no API key)
+  web search <q>         — same as websearch
+  env setup <preset>     — LLM + web plans shell steps; autoresearch | research_agent | all
+  env_setup <preset>     — same as env setup
+  drawio / flowchart     — print Next AI Draw.io URL and local start steps (NEXT_DRAWIO_URL in .env)
+  skills                 — list built-in agent skills (e.g. bundled Scrapling)
+  skill <name> …         — run skill; try `skill scrapling guide`
+  scrapling …            — skill shortcuts: guide / fetch / parse / refs (see `skills`)
+  scrapling mcp --http … — vendored Scrapling MCP (FastMCP); use HTTP in chat, not stdio
+  scrapling extract …    — upstream CLI extract (get/fetch/…); needs scrapling[fetchers]
+  scrapling install      — Playwright browsers etc. (upstream installer)
+  scrapling shell -c "…" — one-off shell eval; interactive shell → run scrapling_entry.py in terminal
   stop / cancel          — stop current subprocess
   auto on / auto off     — (handled by worker) toggle continuous research
   help                   — this text

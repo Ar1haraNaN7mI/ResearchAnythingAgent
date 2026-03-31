@@ -6,5 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 AUTORESEARCH_DIR = ROOT / "autoresearch"
 CIL_SCRIPT = ROOT / "cil_anything.py"
+# Vendored Scrapling library (see research_agent/skills/scrapling/SKILL.md)
+SCRAPLING_DIR = ROOT / "Scrapling"
 
-__all__ = ["ROOT", "AUTORESEARCH_DIR", "CIL_SCRIPT"]
+__all__ = ["ROOT", "AUTORESEARCH_DIR", "CIL_SCRIPT", "SCRAPLING_DIR"]

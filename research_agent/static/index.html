@@ -276,6 +276,34 @@
       max-width: 52rem;
     }
 
+    .drawio-bar {
+      margin: 0.55rem 0 0;
+      font-size: 0.74rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.85rem;
+    }
+
+    .drawio-bar a {
+      color: var(--accent3);
+      font-weight: 600;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(0, 255, 157, 0.35);
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .drawio-bar a:hover {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .drawio-meta {
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+
     .status-pill {
       position: relative;
       display: inline-flex;
@@ -471,7 +499,11 @@
         <div>
           <span class="logo-mini">RESEARCH ANYTHING</span>
           <h1>Command · Autoresearch + CIL</h1>
-          <p class="hint">New messages preempt background work. Try: train, prepare, cil …, llm / claude …, shell/os …, auto on/off, stop, help</p>
+          <p class="hint">New messages preempt background work. Try: train, prepare, cil …, llm / claude …, drawio …, shell/os …, auto on/off, stop, help</p>
+          <p class="drawio-bar" id="drawio-bar">
+            <a id="drawio-link" href="http://127.0.0.1:6002" target="_blank" rel="noopener noreferrer">Flowcharts · Next AI Draw.io</a>
+            <span class="drawio-meta" id="drawio-meta">opens in new tab · URL from NEXT_DRAWIO_URL</span>
+          </p>
           <div class="os-runtime" id="os-runtime" aria-live="polite"></div>
           <details class="os-panel">
             <summary>Linux / Ubuntu · Windows command map (reference)</summary>
@@ -549,7 +581,9 @@
     const sendBtn = document.getElementById("send");
     const pill = document.getElementById("conn-pill");
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(proto + "://" + location.host + "/ws");
+    let ws = null;
+    let reconnectAttempt = 0;
+    let reconnectTimer = null;
 
     fetch("/api/system")
       .then(function (r) {
@@ -560,6 +594,10 @@
         if (el && d.text) {
           el.textContent = d.text.split("\n").slice(0, 4).join(" · ");
         }
+        var link = document.getElementById("drawio-link");
+        if (link && d.drawio_url) {
+          link.setAttribute("href", d.drawio_url);
+        }
       })
       .catch(function () {});
 
@@ -568,31 +606,49 @@
       log.scrollTop = log.scrollHeight;
     }
 
-    ws.onopen = function () {
-      pill.textContent = "Live";
-      pill.style.borderColor = "rgba(0,240,255,0.45)";
-      pill.style.color = "var(--accent)";
-    };
+    function connectWs() {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      ws = new WebSocket(proto + "://" + location.host + "/ws");
 
-    ws.onmessage = function (ev) {
-      line(ev.data);
-    };
+      ws.onopen = function () {
+        reconnectAttempt = 0;
+        pill.textContent = "Live";
+        pill.style.borderColor = "rgba(0,240,255,0.45)";
+        pill.style.color = "var(--accent)";
+      };
 
-    ws.onclose = function () {
-      pill.textContent = "Offline";
-      pill.style.borderColor = "rgba(255,80,80,0.45)";
-      pill.style.color = "#ff6b6b";
-      line("[agent] disconnected");
-    };
+      ws.onmessage = function (ev) {
+        line(ev.data);
+      };
 
-    ws.onerror = function () {
-      pill.textContent = "Error";
-      line("[agent] connection error");
-    };
+      ws.onclose = function () {
+        pill.textContent = "Offline";
+        pill.style.borderColor = "rgba(255,80,80,0.45)";
+        pill.style.color = "#ff6b6b";
+        line("[agent] disconnected — reconnecting…");
+        var delay = Math.min(3e4, 1e3 * Math.pow(2, reconnectAttempt));
+        reconnectAttempt += 1;
+        reconnectTimer = setTimeout(connectWs, delay);
+      };
+
+      ws.onerror = function () {
+        pill.textContent = "Error";
+        line("[agent] connection error");
+      };
+    }
+
+    connectWs();
 
     function send() {
       const t = msg.value.trim();
       if (!t) return;
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        line("[agent] not connected yet — wait for Live status or retry shortly.");
+        return;
+      }
       msg.value = "";
       ws.send(t);
     }

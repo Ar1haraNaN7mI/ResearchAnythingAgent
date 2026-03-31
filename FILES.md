@@ -24,6 +24,8 @@
     → PriorityCommandBus.prepend_user()   # 用户消息永远插队优先
     → ResearchWorker 线程取出命令
     → dispatcher.parse_and_dispatch()
+          ├─ web search / websearch → env_agent.run_websearch_display（ddgs）
+          ├─ env setup <preset> → env_agent.run_env_setup（LLM 规划 + 执行 + 失败自修复）
           ├─ try_handle_os_command()      # shell / os / apt/winget… → 不调 LLM
           ├─ llm / claude → llm_client      # 按 LLM_PROVIDER 走 Claude/Ollama/Qwen
           ├─ cil … → executor.run_cil       # 仅 Windows
@@ -96,8 +98,10 @@
 
 | 文件 | 详细说明 |
 |------|----------|
-| **`dispatcher.py`** | 核心 **`parse_and_dispatch(text, runner)`** 返回 `(message, exit_code)`。顺序大致为：`stop` / `help` → **`try_handle_os_command`**（不经 LLM）→ **`llm`/`claude`**（`llm_code_assist`）→ **`cil`**（非 Windows 直接报错）→ **`uv`** → 关键词 **`prepare`/`train`** → 以 `--` 开头的 CIL 参数 → 否则未知命令。另有 **`parse_auto_toggle`** 供 worker 识别 `auto on/off`。**`_help_text()`** 为内嵌帮助字符串。 |
-| **`executor.py`** | **`ProcessRunner`**：维护当前 **`Popen`**，支持 **`cancel()`**（terminate → kill）。**`run_uv` / `run_python` / `run_cil`**：`shell=False` 列表参数；**`run_uv_fallback_python`** 优先 `uv run`，失败则 `python`。**`run_shell(command)`**：Windows 下 `shell=True`；Unix 下 `["/bin/sh","-c",command]`；流式 stdout 到 broadcast。 |
+| **`dispatcher.py`** | 核心 **`parse_and_dispatch(text, runner)`** 返回 `(message, exit_code)`。顺序大致为：`stop` / `help` → **`web search`/`websearch`** → **`env setup`/`env_setup`** → **`try_handle_os_command`**（不经 LLM）→ **`llm`/`claude`**（`llm_code_assist`）→ **`cil`**（非 Windows 直接报错）→ **`uv`** → 关键词 **`prepare`/`train`** → 以 `--` 开头的 CIL 参数 → 否则未知命令。另有 **`parse_auto_toggle`** 供 worker 识别 `auto on/off`。**`_help_text()`** 为内嵌帮助字符串。 |
+| **`executor.py`** | **`ProcessRunner`**：维护当前 **`Popen`**，支持 **`cancel()`**（terminate → kill）。**`run_uv` / `run_python` / `run_cil`**：`shell=False` 列表参数；**`run_uv_fallback_python`** 优先 `uv run`，失败则 `python`。**`run_shell` / `run_shell_capture`**：可选 **`cwd`**；捕获模式返回 **`(exit_code, full_output)`** 供 env 自修复循环；流式 stdout 到 broadcast。 |
+| **`web_search.py`** | **`search_web` / `format_search_for_llm`**：依赖 **`ddgs`**（无需 API Key），为 **`env_agent`** 与聊天侧提供文档/报错关键词检索摘要。 |
+| **`env_agent.py`** | **`run_env_setup`**：按预设 **`autoresearch` / `research_agent` / `all`** 读取清单文件，联网摘要 + **`llm_complete`** 生成 JSON shell 步骤，经 **`ProcessRunner.run_shell_capture`** 执行；失败时 **`_repair_command`**（含二次 **`format_search_for_llm`**）改写命令重试，直至成功或达 **`ENV_SETUP_STEP_ATTEMPTS`**。**`run_websearch_display`**：向用户返回检索列表。 |
 | **`os_info.py`** | **`format_startup_paragraph()`**：Python 版本、`sys.platform`、Windows/Linux/macOS 发行版（读 `/etc/os-release`）、**`current_os_family()`**、**`llm_config_summary()`**；供 Web 首包与终端打印。 |
 | **`os_shell.py`** | **`try_handle_os_command`**：若匹配则返回 `(str, int)`，否则返回 `None`。支持：`shell <cmd>`；`os win|linux|ubuntu <cmd>` + **`translate_for_current_os`**；**`infer_linux_windows_from_line`** 识别 `apt`/`winget`/`brew`/`ls` 等；本机与推断源一致时直接 **`run_shell`**。 |
 | **`os_translate.py`** | 轻量 **跨 OS 字符串映射**（如 apt install → winget、winget → apt），非完备包管理器；无法映射时原样执行并可能失败。 |
@@ -106,7 +110,7 @@
 
 | 文件 | 详细说明 |
 |------|----------|
-| **`llm_settings.py`** | 从 `ROOT/.env` 加载（`dotenv`）。**`llm_provider()`**：显式 `LLM_PROVIDER` 或按「Anthropic 密钥 → Ollama 模型名 → Qwen 密钥」启发式默认。**`anthropic_*` / `ollama_*` / `qwen_*`** / **`max_output_tokens`** / **`llm_config_summary()`**。 |
+| **`llm_settings.py`** | 从 `ROOT/.env` 加载（`dotenv`）。**`llm_provider()`**：显式 `LLM_PROVIDER` 或按「Anthropic 密钥 → Ollama 模型名 → Qwen 密钥」启发式默认。**`anthropic_*` / `ollama_*` / `qwen_*`** / **`max_output_tokens`** / **`llm_config_summary()`** / **`env_setup_step_attempts()`**（`ENV_SETUP_STEP_ATTEMPTS`）。 |
 | **`llm_client.py`** | **`llm_complete` / `llm_code_assist`**：按 provider 分流到 Anthropic Messages、Ollama `POST /api/chat`（httpx）、DashScope **OpenAI 兼容**（`openai` SDK）。 |
 | **`claude_client.py`** | 薄封装：**`claude_complete`** → **`llm_complete`**；保留旧导入路径。 |
 | **`claude_settings.py`** | **`from research_agent.llm_settings import *`**，兼容旧代码 `import claude_settings`。 |
@@ -115,7 +119,7 @@
 
 | 文件 | 详细说明 |
 |------|----------|
-| **`requirements.txt`** | 运行时：`fastapi`、`uvicorn`、`anthropic`、`python-dotenv`、`openai`、`httpx` 等；与 `autoresearch` 的 PyTorch 环境**相互独立**（聊天智能体不强制 GPU）。 |
+| **`requirements.txt`** | 运行时：`fastapi`、`uvicorn`、`anthropic`、`python-dotenv`、`openai`、`httpx`、`ddgs` 等；与 `autoresearch` 的 PyTorch 环境**相互独立**（聊天智能体不强制 GPU）。 |
 
 ---
 
@@ -159,6 +163,7 @@ __main__.py
   └─ terminal_ui ──────────────────── runtime ──（同上）
 
 dispatcher
+  ├─ env_agent → web_search, llm_client, executor
   ├─ executor → paths (ROOT, AUTORESEARCH, CIL_SCRIPT)
   ├─ os_shell → os_translate, os_info(间接)
   └─ llm_client → llm_settings

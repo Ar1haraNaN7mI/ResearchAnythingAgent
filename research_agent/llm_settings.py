@@ -86,6 +86,15 @@ def claude_max_tokens() -> int:
     return max_output_tokens()
 
 
+def env_setup_step_attempts() -> int:
+    """Max shell attempts per env-setup step (initial run + repairs). Default 5."""
+    raw = os.environ.get("ENV_SETUP_STEP_ATTEMPTS", "5").strip()
+    try:
+        return max(1, min(20, int(raw)))
+    except ValueError:
+        return 5
+
+
 def llm_config_summary() -> str:
     """One-line description for logs / UI."""
     p = llm_provider()
@@ -96,3 +105,17 @@ def llm_config_summary() -> str:
     if p == "qwen":
         return f"qwen model={qwen_model()} base={qwen_base_url()}"
     return p
+
+
+def next_drawio_url() -> str:
+    """
+    Base URL for the bundled Next AI Draw.io app (npm run dev defaults to port 6002).
+    Override with NEXT_DRAWIO_URL or DRAWIO_APP_URL in workspace root .env.
+    """
+    u = (
+        os.environ.get("NEXT_DRAWIO_URL", "").strip()
+        or os.environ.get("DRAWIO_APP_URL", "").strip()
+    )
+    if u:
+        return u.rstrip("/")
+    return "http://127.0.0.1:6002"

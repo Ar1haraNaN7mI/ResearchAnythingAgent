@@ -67,6 +67,26 @@ Qwen 调用方式见：[通过 API 使用通义千问](https://help.aliyun.com/z
 
 ---
 
+## Next AI Draw.io（流程图 / 本地化）
+
+仓库内 **`next-ai-draw-io/`** 为 [Next AI Draw.io](https://github.com/DayuanJiang/next-ai-draw-io) 的拷贝：用自然语言生成、修改 draw.io 图表；中文界面见 `docs/cn/README_CN.md`，路由为 `app/[lang]`。
+
+### 与聊天板联动
+
+- Web 顶栏有 **「Flowcharts · Next AI Draw.io」** 链接；默认指向 `http://127.0.0.1:6002`。可在根目录 `.env` 设置 **`NEXT_DRAWIO_URL`**（或 `DRAWIO_APP_URL`）改为你的实际地址。
+- 在聊天或终端输入 **`drawio`**、**`flowchart`** 或 **`draw.io`** 会打印说明与当前配置的 URL。
+
+### 本地启动 Draw.io 应用
+
+在 **`next-ai-draw-io/`** 目录：
+
+1. `npm install`
+2. 复制 `env.example` 为 **`.env.local`**
+3. 与主项目一致使用通义千问时，可设置：`AI_PROVIDER=qwen`、`QWEN_API_KEY`（与根 `.env` 的 `QWEN_API_KEY` / `DASHSCOPE_API_KEY` 相同）、`AI_MODEL`（如 `qwen-plus`）、可选 `QWEN_BASE_URL`（默认 DashScope 兼容端点，见 [通过 API 使用通义千问](https://help.aliyun.com/zh/model-studio/developer-reference/use-qwen-by-calling-api)）。
+4. `npm run dev` → 浏览器打开 **http://localhost:6002**（与 README 一致）。
+
+---
+
 ## 聊天规则（Web 与终端通用）
 
 - 新消息**永远优先**于后台自动研究队列。
@@ -80,6 +100,9 @@ Qwen 调用方式见：[通过 API 使用通义千问](https://help.aliyun.com/z
 - `cil discover --window-title "..." --json`
 - `cil auto --app "C:\path\app.exe" --name x --window-title "..." --json`
 - `stop` — 取消当前任务
+- `websearch <关键词>` 或 `web search <关键词>` — 联网检索（`ddgs` 库，查文档与安装说明）
+- `env setup autoresearch` | `env setup research_agent` | `env setup all` — 根据 `pyproject.toml` / `requirements.txt` 与联网摘要，由 LLM 生成 shell 步骤并执行；单步失败时会结合报错与二次检索自动改写命令重试（次数见 `.env` 中 `ENV_SETUP_STEP_ATTEMPTS`）
+- `drawio` / `flowchart` / `draw.io` — 打印 Next AI Draw.io 入口 URL 与本地启动步骤
 - `help`
 
 ---
