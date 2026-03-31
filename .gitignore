@@ -13,3 +13,7 @@ build/
 *.log
 run.log
 .DS_Store
+
+# Next AI Draw.io exports (keep README only)
+drawio_exports/*
+!drawio_exports/README.md

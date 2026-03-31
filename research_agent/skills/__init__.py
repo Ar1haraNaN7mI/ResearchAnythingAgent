@@ -4,25 +4,27 @@ import shlex
 import sys
 from typing import Callable
 
-from research_agent.skills import scrapling_skill
+from research_agent.skills import drawio_skill, scrapling_skill
 
 SkillHandler = Callable[[list[str]], tuple[str, int]]
 
 _HANDLERS: dict[str, SkillHandler] = {
     "scrapling": scrapling_skill.handle_scrapling,
+    "drawio": drawio_skill.handle_drawio,
 }
 
 
 def format_skills_list() -> str:
     lines = [
-        "Built-in Research Agent skills (bundled Scrapling/):",
+        "Built-in Research Agent skills:",
         "",
-        "  scrapling — fetch/parse/guide/refs; full MCP via `scrapling mcp --http ...` (see skill scrapling guide)",
+        "  scrapling — fetch/parse/guide/refs; MCP: `scrapling mcp --http ...`",
+        "  drawio    — next-ai-draw-io: export path, PNG bg (transparent default), URL (see skill drawio guide)",
         "",
         "Usage:",
         "  skills",
         "  skill <name> [subcommand ...]",
-        "  scrapling ...   (alias for skill scrapling ...)",
+        "  scrapling …  |  drawio …   (same as skill <name> …)",
     ]
     return "\n".join(lines)
 

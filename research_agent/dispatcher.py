@@ -91,15 +91,20 @@ def parse_and_dispatch(text: str, runner: ProcessRunner) -> Tuple[str, int]:
         tail = raw[9:].strip() if len(raw) > 9 else ""
         return dispatch_skill_line(("scrapling " + tail).strip())
 
-    if low in ("drawio", "flowchart", "draw.io"):
+    if low == "drawio" or low.startswith("drawio ") or low.startswith("drawio\t"):
+        from research_agent.skills import dispatch_skill_line
+
+        return dispatch_skill_line(raw.strip())
+
+    if low in ("flowchart", "draw.io"):
         from research_agent.llm_settings import next_drawio_url
 
         u = next_drawio_url()
         return (
-            "Next AI Draw.io (AI + draw.io, zh UI under app/[lang]): "
+            "Next AI Draw.io: "
             f"{u}\n"
-            "Start: cd next-ai-draw-io → npm install → copy env.example to .env.local → "
-            "set AI_PROVIDER=qwen, QWEN_API_KEY (same as root .env), AI_MODEL → npm run dev.",
+            "Skill: `drawio guide` | `drawio path` | `drawio bg transparent|white`\n"
+            "Start: cd next-ai-draw-io → npm install → copy env.example to .env.local → npm run dev.",
             0,
         )
 
@@ -218,7 +223,8 @@ def _help_text() -> str:
   web search <q>         — same as websearch
   env setup <preset>     — LLM + web plans shell steps; autoresearch | research_agent | all
   env_setup <preset>     — same as env setup
-  drawio / flowchart     — print Next AI Draw.io URL and local start steps (NEXT_DRAWIO_URL in .env)
+  drawio …               — Next AI Draw.io skill: guide, url, path, bg transparent|white, status
+  flowchart / draw.io    — short URL + pointer to `drawio guide`
   skills                 — list built-in agent skills (e.g. bundled Scrapling)
   skill <name> …         — run skill; try `skill scrapling guide`
   scrapling …            — skill shortcuts: guide / fetch / parse / refs (see `skills`)
